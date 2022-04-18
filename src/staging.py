@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
-from pyspark.sql.functions import col, when, regexp_replace
+from pyspark.sql.functions import col, when, regexp_replace, lit
 spark = SparkSession.builder.master("yarn-client").enableHiveSupport() \
                     .appName('ADMP-Grp14-Staging') \
                     .getOrCreate()
@@ -68,6 +68,7 @@ male_cases_stg = spark.read.csv("/data/input/dynamic/covid/infections/england/ma
 female_cases_stg = spark.read.csv("/data/input/dynamic/covid/infections/england/female", schema=cases_gender_schema)
 
 '''Cleaning, filtering and manipulating source datasets'''
+
 major_ethnicities = ["Asian", "Black", "Mixed", "White", "Other"]
 
 eth = ethnicity_stg.filter((col("Measure") == "% of local population in this ethnic group") & (col("Ethnicity_type") == "ONS 2011 5+1") & col("Ethnicity").isin(major_ethnicities)).select("Ethnicity","Geography_name","Geography_code","Value")
@@ -102,7 +103,6 @@ cases_both.registerTempTable("cases_both")
 cases_actual_calc = spark.sql("SELECT *, lead(malecases) over (partition by areacode, age order by date desc) as m_l, lead(femalecases) over (partition by areacode, age order by date desc) as f_l from cases_both")
 cases_actual_calc.registerTempTable("cases_actual_calc")
 cases_both_actual = spark.sql("SELECT areacode, areaname, areatype, date, age, malecases-m_l as actualmalecases, femalecases-f_l as actualfemalecases from cases_actual_calc")
-
 la_codes.registerTempTable("la_codes")
 country_codes = spark.sql("SELECT DISTINCT CTRYCD, CTRYNM FROM la_codes")
 
