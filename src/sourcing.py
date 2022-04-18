@@ -27,13 +27,13 @@ la_schema = StructType([StructField("LADCD", StringType(), True)\
                    ,StructField("LAD20CD", StringType(), True)\
                    ,StructField("LAD20NM", StringType(), True) ])
 
-ethnicity_src = spark.createDataFrame(pd.read_csv("https://raw.githubusercontent.com/mohasin-ibrahim/admp/main/ethnicity_uk.csv"))
+ethnicity_src = spark.createDataFrame(pd.read_csv("https://raw.githubusercontent.com/mohasin-ibrahim/admp/main/suppl_files/ethnicity_uk.csv"))
 ethnicity_src.write.mode("overwrite").csv("/data/input/static/ethnicity")
 
-education_src = spark.createDataFrame(pd.read_csv("https://raw.githubusercontent.com/mohasin-ibrahim/admp/main/England_Education_Levels.csv"))
+education_src = spark.createDataFrame(pd.read_csv("https://raw.githubusercontent.com/mohasin-ibrahim/admp/main/suppl_files/England_Education_Levels.csv"))
 education_src.write.format("csv").mode('overwrite').save("/data/input/static/education")
 
-flu_src = spark.createDataFrame(pd.read_csv("https://raw.githubusercontent.com/mohasin-ibrahim/admp/main/Flu_Deaths_UK.csv"))
+flu_src = spark.createDataFrame(pd.read_csv("https://raw.githubusercontent.com/mohasin-ibrahim/admp/main/suppl_files/Flu_Deaths_UK.csv"))
 flu_src.write.format("csv").mode('overwrite').save("/data/input/static/flu")
 
 lacode_src = spark.createDataFrame(pd.read_csv("https://raw.githubusercontent.com/drkane/geo-lookups/master/la_all_codes.csv", header=None), schema=la_schema)
