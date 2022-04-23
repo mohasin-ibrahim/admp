@@ -2,9 +2,14 @@ from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 import pandas as pd
 spark = SparkSession.builder.master("yarn-client") \
-                    .appName('ADMP-Grp14-Sourcing') \
+                    .appName('ADMP-Grp14-Covid-Sourcing') \
                     .getOrCreate()
 
+'''Set loglevel to WARN to avoid logs flooding on the console'''
+spark.sparkContext.setLogLevel("WARN")
+
+'''Author: Mohasin, Mikey'''
+'''Schema Declaration for Lower Authority (LA) codes lookup file'''
 la_schema = StructType([StructField("LADCD", StringType(), True)\
                    ,StructField("LADNM", StringType(), True)\
                    ,StructField("LADCD_ACTIVE", StringType(), True)\
@@ -36,6 +41,7 @@ education_src.write.format("csv").mode('overwrite').save("/data/input/static/edu
 flu_src = spark.createDataFrame(pd.read_csv("https://raw.githubusercontent.com/mohasin-ibrahim/admp/main/suppl_files/Flu_Deaths_UK.csv"))
 flu_src.write.format("csv").mode('overwrite').save("/data/input/static/flu")
 
+'''Saving the dataframe as ~ delimited file to avoid clashing due to in-column values'''
 lacode_src = spark.createDataFrame(pd.read_csv("https://raw.githubusercontent.com/drkane/geo-lookups/master/la_all_codes.csv", header=None), schema=la_schema)
 lacode_src.write.format("csv").mode("overwrite").option("quote", "").option("delimiter", "~").save("/data/input/static/lacode")
 
