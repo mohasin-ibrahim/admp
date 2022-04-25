@@ -27,9 +27,9 @@ education_schema = StructType([StructField("Region", StringType(), True)\
                    ,StructField("NQF_Level3_Above", FloatType(), True)\
                    ,StructField("NQF_Level4_Above", FloatType(), True) ])
 
-flu_schema = StructType([StructField("Year", IntegerType(), True)\
+flu_schema = StructType([StructField("Year", StringType(), True)\
                    ,StructField("Country", StringType(), True)\
-                   ,StructField("Influenza_Deaths", IntegerType(), True) ])
+                   ,StructField("Influenza_Deaths", StringType(), True) ])
 
 deaths_nation_schema = StructType([StructField("areaCode", StringType(), True)\
                    ,StructField("areaName", StringType(), True)\

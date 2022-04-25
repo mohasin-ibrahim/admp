@@ -1,3 +1,4 @@
+from ctypes import Union
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 from functools import reduce
@@ -134,3 +135,37 @@ dq_null_inter.registerTempTable("dq_null_inter")
 dq_null_final = spark.sql("SELECT DISTINCT CASE WHEN BD.MAX_BATCH_ID > INTER.BATCH_ID THEN BD.MAX_BATCH_ID+1 ELSE 1 END AS BATCH_ID, INTER.DATABASE_NAME, INTER.TABLE_NAME, INTER.DQ_TYPE, INTER.RESULT, INTER.LOAD_DATETIME \
     FROM dq_null_inter INTER INNER JOIN (SELECT CASE WHEN MAX(BATCH_ID) IS NULL THEN 0 ELSE MAX(batch_id) END AS MAX_BATCH_ID, 0 AS DUMMY FROM mart.DATA_QUALITY_AUDIT WHERE DQ_TYPE='Null Check') BD ON INTER.BATCH_ID=BD.DUMMY ")
 dq_null_final.write.insertInto("mart.DATA_QUALITY_AUDIT", overwrite=False)
+
+
+'''Integrity checks - Facts tables'''
+fact_deaths_and_vaccines_intgrty = spark.sql("SELECT dim_date_id as non_id from mart.FACT_COV_DEATHS_AND_VACCINES where dim_date_id not in (select dim_date_id from mart.dim_date) \
+UNION \
+select dim_location_id as non_id from mart.FACT_COV_DEATHS_AND_VACCINES where dim_location_id not in (select dim_location_id from mart.dim_location)")
+fact_deaths_and_vaccines_intgrty.registerTempTable("fact_deaths_and_vaccines_intgrty")
+
+fact_cases_intgrty = spark.sql("SELECT dim_date_id as non_id from mart.FACT_COV_CASES where dim_date_id not in (select dim_date_id from mart.dim_date) \
+UNION \
+select dim_location_id as non_id from mart.FACT_COV_CASES where dim_location_id not in (select dim_location_id from mart.dim_location) \
+UNION \
+select dim_agegrp_id as non_id from mart.FACT_COV_CASES where dim_location_id not in (select dim_agegrp_id from mart.dim_agegrp) ")
+fact_cases_intgrty.registerTempTable("fact_cases_intgrty")
+
+fact_regn_miscellaneous_intgrty = spark.sql("select dim_location_id as non_id from mart.FACT_REGN_MISCELLANEOUS where dim_location_id not in (select dim_location_id from mart.dim_location)")
+fact_regn_miscellaneous_intgrty.registerTempTable("fact_regn_miscellaneous_intgrty")
+
+fact_deaths_and_vaccines_intgrty_res = spark.sql("SELECT CASE WHEN TOTAL_ID>0 THEN 'Failed' ELSE 'Passed' END AS RESULT, 'fact_deaths_and_vaccines' AS TABLE_NAME, 'mart' AS DATABASE_NAME, 'Integrity Check' as DQ_TYPE \
+    FROM (SELECT COUNT(non_id) AS TOTAL_ID FROM fact_deaths_and_vaccines_intgrty) CASES")
+
+fact_cases_intgrty_res = spark.sql("SELECT CASE WHEN TOTAL_ID>0 THEN 'Failed' ELSE 'Passed' END AS RESULT, 'fact_cases' AS TABLE_NAME, 'mart' AS DATABASE_NAME, 'Integrity Check' as DQ_TYPE \
+    FROM (SELECT COUNT(non_id) AS TOTAL_ID FROM fact_cases_intgrty) CASES")
+
+fact_regn_miscellaneous_intgrty_res = spark.sql("SELECT CASE WHEN TOTAL_ID>0 THEN 'Failed' ELSE 'Passed' END AS RESULT, 'fact_regn_miscellaneous' AS TABLE_NAME, 'mart' AS DATABASE_NAME, 'Integrity Check' as DQ_TYPE \
+    FROM (SELECT COUNT(non_id) AS TOTAL_ID FROM fact_regn_miscellaneous_intgrty) CASES")
+
+dq_integrty = fact_deaths_and_vaccines_intgrty_res.union(fact_cases_intgrty_res.union(fact_regn_miscellaneous_intgrty_res))
+dq_integrty_inter = dq_integrty.withColumn("LOAD_DATETIME", lit(current_timestamp())).withColumn("BATCH_ID", lit(0))
+dq_integrty_inter.registerTempTable("dq_integrty_inter")
+
+dq_integrty_final = spark.sql("SELECT DISTINCT CASE WHEN BD.MAX_BATCH_ID > INTER.BATCH_ID THEN BD.MAX_BATCH_ID+1 ELSE 1 END AS BATCH_ID, INTER.DATABASE_NAME, INTER.TABLE_NAME, INTER.DQ_TYPE, INTER.RESULT, INTER.LOAD_DATETIME \
+    FROM dq_integrty_inter INTER INNER JOIN (SELECT CASE WHEN MAX(BATCH_ID) IS NULL THEN 0 ELSE MAX(batch_id) END AS MAX_BATCH_ID, 0 AS DUMMY FROM mart.DATA_QUALITY_AUDIT WHERE DQ_TYPE='Integrity Check') BD ON INTER.BATCH_ID=BD.DUMMY ")
+dq_integrty_final.write.insertInto("mart.DATA_QUALITY_AUDIT", overwrite=False)
